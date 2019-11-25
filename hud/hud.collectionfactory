@@ -1,0 +1,2 @@
+prototype: "/hud/hud.collection"
+load_dynamically: false
