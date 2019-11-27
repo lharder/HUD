@@ -80,7 +80,7 @@ local function createRadar( radarId, x, y, hexcol, imgBG )
 	gui.set_position( radar, pos )
 
 	if hexcol == nil then hexcol = "99b3ff" end
-	gui.set_color( radar, Color( hexcol, 1 ) )
+	gui.set_color( radar, Color( hexcol, .6 ) )
 
 	local atlas, img = Texture( imgBG, "hud/radar" )
 	gui.set_texture( radar, atlas )
@@ -140,6 +140,11 @@ function on_message( self, message_id, message, sender )
 	if message_id == hash( "createRadar" ) then
 		createRadar( message.id, message.x, message.y, message.color, message.bgTexture )
 		
+	elseif message_id == hash( "updateRadarBlips" ) then
+		for i, blip in ipairs( message ) do 	
+			updateRadarBlip( blip.radarId, blip.contactId, blip.pos, blip.color, blip.weight )
+		end
+
 	elseif message_id == hash( "updateRadarBlip" ) then
 		updateRadarBlip( message.radarId, message.contactId, message.pos, message.color, message.weight )
 

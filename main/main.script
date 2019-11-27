@@ -10,7 +10,9 @@ function init( self )
 	local radar = hud:radar( id )
 
 	radar:registerBlip( "/ship",  "#00ff00", weight )
+	radar:registerBlip( "/player",  "#ffff00", weight )
 end
+
 
 function on_input(self, action_id, action)
 	if action_id == hash("touch") then

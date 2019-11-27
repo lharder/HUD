@@ -8,10 +8,10 @@ local Radar = {}
 function Radar.new( id, player, scale ) 
 	
 	local r = {}
-	r.id = id				-- id of this radar instance in the HUD
-	r.player = player		-- gameobject at the center of the radar
-	r.scale = scale	or 1	-- scaling factor for the radar display : reality
-	r.contacts = {}			-- currently active blips on this radar
+	r.id = id               -- id of this radar instance in the HUD
+	r.player = player       -- gameobject at the center of the radar
+	r.scale = scale	or 1    -- scaling factor for the radar display : reality
+	r.contacts = {}         -- currently active blips on this radar
 
 	
 	-- Add a new blip to the radar
@@ -33,6 +33,8 @@ function Radar.new( id, player, scale )
 	-- update blip positions in GUI
 	function r:tick( secs ) 
 		local playerPos = go.get_position( r.player )
+
+		local blips = {}
 		for i, contactId in ipairs( r.contacts ) do 
 
 			local contactPos = go.get_position( contactId )
@@ -40,13 +42,15 @@ function Radar.new( id, player, scale )
 			pos.x = pos.x / r.scale
 			pos.y = pos.y / r.scale
 			pos.z = pos.z / r.scale
-			
-			msg.post( "/collection0/hud#gui", "updateRadarBlip", { 
-				id = r.id,
+
+			blips[ i ] = { 
+				id = r.id, 
 				contactId = contactId, 
-				pos = pos
-			})
+				pos = pos 
+			}
 		end	
+		
+		msg.post( "/collection0/hud#gui", "updateRadarBlips", blips )
 	end
 	
 
