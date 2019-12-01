@@ -1,3 +1,6 @@
+require( "hud.util" )
+
+
 local playerSpecs
 
 local radars = {}
@@ -5,63 +8,10 @@ local blips = {}
 local bars = {}
 
 
--- helper ----------------------------------------------------
-function string:split( sep )
-	local sep, fields = sep or ":", {}
-	local pattern = string.format( "([^%s]+)", sep )
-	self:gsub( pattern, function( c ) fields[ #fields+1 ] = c end )
-
-	return fields
-end
-
-
-function string:startsWith( txt )
-	return string.sub( self, 1, string.len( txt ) ) == txt
-end
-
-
-local function Color( hex, alpha )
-	if hex == nil then return nil end
-
-	if hex:startsWith( "#" ) then 
-		hex = string.sub( hex, 2, string.len( hex ) ) 
-	end
-	
-	local r, g, b = hex:match( "(%w%w)(%w%w)(%w%w)" )
-	r = ( tonumber( r, 16 ) or 0 ) / 255
-	g = ( tonumber( g, 16 ) or 0 ) / 255
-	b = ( tonumber( b, 16 ) or 0 ) / 255
-	
-	return vmath.vector4( r, g, b, alpha or 1 )
-end
-
-
-local function Texture( url, default ) 
-	local atlas = ""
-	local img = ""
-	
-	if default ~= nil then 
-		local parts = default:split( "/" )
-		atlas = parts[ 1 ]
-		img = parts[ 2 ]
-	end
-	
-	if texture ~= nil then 
-		local parts = texture:split( "/" )
-		atlas = parts[ 1 ]
-		img = parts[ 2 ]
-	end
-
-	return atlas, img
-end
-
-----------------------------------------------------
-
-
 
 function init( self )
-	local radarBG = gui.get_node( "radarTmpl" )
-	-- gui.set_enabled( radarBG, false )
+	gui.set_enabled( gui.get_node( "radarTmpl" ), false )
+	gui.set_enabled( gui.get_node( "hBarTmpl" ), false )
 end
 
 
@@ -135,7 +85,93 @@ local function removeRadarBlip( radarId, contactId )
 end
 
 
+-- Bar handling
+function createHBar( id, x, y, width, height, value, color )
+	if id == nil then return nil end
 
+	-- BG bar
+	local tmpl = gui.get_node( "hBarTmpl" )
+	local hbar = gui.clone( tmpl )
+	gui.set_enabled( hbar, true )
+
+	local pos = gui.get_position( hbar )
+	pos.x = x or 0
+	pos.y = y or 0
+	gui.set_position( hbar, pos )
+
+	local size = vmath.vector3( width, height, 1 )
+	gui.set_size( hbar, size )
+
+	-- Label
+	tmpl = gui.get_node( "hBarTxtTmpl" )
+	local hbarTxt = gui.clone( tmpl )
+	gui.set_id( hbarTxt, id .. "Txt" )
+	gui.set_enabled( hbarTxt, true )
+	gui.set_parent( hbarTxt, hbar, true )
+
+	pos = gui.get_position( hbarTxt )
+	pos.x = -5
+	pos.y = 0
+	gui.set_position( hbarTxt, pos )
+
+	gui.set_text( hbarTxt, id )
+	
+	-- Value bar
+	tmpl = gui.get_node( "hBarValTmpl" )
+	local hbarVal = gui.clone( tmpl )
+	gui.set_id( hbarVal, id )
+	gui.set_enabled( hbarVal, true )
+	gui.set_parent( hbarVal, hbar, true )
+	
+	pos = gui.get_position( hbarVal )
+	pos.x = 0
+	pos.y = 0
+	gui.set_position( hbarVal, pos )
+
+	size = vmath.vector3( value, height, 1 )
+	gui.set_size( hbarVal, size )
+
+	updateHBar( id, value, color )
+end
+
+
+
+function updateHBar( id, value, color )
+	local hbarVal = gui.get_node( id )
+	if hbarVal == nil then return nil end
+	
+	local size = gui.get_size( hbarVal )
+	size.x = value
+	gui.set_size( hbarVal, size )
+
+	if color == nil then color = Color( "#02edff", 1 ) end
+	gui.set_color( hbarVal, color )
+end
+
+
+function setCaptionHBar( id, caption, x, y, color, scale )
+	local hbarTxt = gui.get_node( id .. "Txt" )
+	if hbarTxt == nil then return nil end
+
+	if caption ~= nil then gui.set_text( hbarTxt, caption ) end
+	if scale ~= nil then gui.set_scale( hbarTxt, scale ) end
+	if color ~= nil then gui.set_color( hbarTxt, color) end
+
+	if x ~= nil or y ~= nil then
+		local pos = gui.get_position( hbarTxt )
+
+		if( x == nil ) then x = pos.x end
+		if( y == nil ) then y = pos.y end
+		
+		pos.x = x
+		pos.y = y
+		gui.set_position( hbarTxt, pos )
+	end
+end
+
+
+
+-- Standard events -------------------------------------
 function on_message( self, message_id, message, sender )
 	if message_id == hash( "createRadar" ) then
 		createRadar( message.id, message.x, message.y, message.color, message.bgTexture )
@@ -150,6 +186,16 @@ function on_message( self, message_id, message, sender )
 
 	elseif message_id == hash( "removeRadarBlip" ) then
 		removeRadarBlip( message.id, message.contactId )
+
+	elseif message_id == hash( "createHBar" ) then
+		createHBar( message.id, message.x, message.y, message.width, message.height, message.value, message.color )
+
+	elseif message_id == hash( "updateHBar" ) then
+		updateHBar( message.id, message.value, message.color )
+
+	elseif message_id == hash( "setCaptionHBar" ) then
+		setCaptionHBar( message.id, message.caption, message.x, message.y, message.color, message.scale )
+			
 	end
 end
 
