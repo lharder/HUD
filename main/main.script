@@ -12,21 +12,28 @@ function init( self )
 	radar:registerBlip( "/ship",  "#00ff00", weight )
 	radar:registerBlip( "/player",  "#ffff00", weight )
 
-	-- 							 id,      x,   y,   width, height, min, max,  value, colHi, colMid, colLo
-	self.speedBar = hud:newHBar( "speed", 200, 200,   300,     5, -100, 100, 100 )
-	self.speedBar:setCaption( "Gronk ", nil, 3, "#02edff", 0.5 )
+	-- 							 id,      x,   y,   width, height, min, max,  value, colHi, colMid, colLo, isVertical
+	self.speedBar = hud:newVBar( "speed", 400, 200,     30,   200,   0, 100,   100, nil, nil, nil )
+	self.speedBar:setCaption( "Speed (0)", nil, nil, "#02edff", 1, 45 )
+
+	-- 							 id,      x,   y, width, height, min, max,  value, colHi, colMid, colLo
+	self.fuelBar = hud:newHBar( "fuel", 600, 200,   200,     15,   0, 100, 100 )
+	self.fuelBar:setCaption( "Fuel ", nil, nil, "#02edff", 0.5 )
 end
 
 
-function on_input(self, action_id, action)
-	if action_id == hash("touch") then
+function on_input( self, action_id, action)
+	if action_id == hash( "touch" ) then
 		
 		local pos = go.get_position( "/ship" )
 		pos.x = pos.x - 1
 		go.set_position( pos, "/ship" )
 
-		local val = self.speedBar:getValue()
-		self.speedBar:update( val - 1 )
-		self.speedBar:setCaption( val - 1 )
+		local val = self.speedBar:getValue() - 1
+		self.speedBar:update( val )
+		self.speedBar:setCaption( "Speed (" .. self.speedBar:getValue() .. ")"  )
+
+		local delta = math.random( 100 ) 
+		self.fuelBar:update( delta )
 	end
 end

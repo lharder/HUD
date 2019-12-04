@@ -86,86 +86,108 @@ end
 
 
 -- Bar handling
-function createHBar( id, x, y, width, height, value, color )
+function createBar( id, x, y, width, height, value, color, isVertical )
 	if id == nil then return nil end
 
 	-- BG bar
 	local tmpl = gui.get_node( "hBarTmpl" )
-	local hbar = gui.clone( tmpl )
-	gui.set_enabled( hbar, true )
+	local bar = gui.clone( tmpl )
+	gui.set_enabled( bar, true )
 
-	local pos = gui.get_position( hbar )
+	local pos = gui.get_position( bar )
 	pos.x = x or 0
 	pos.y = y or 0
-	gui.set_position( hbar, pos )
+	if isVertical then pos.y = y + height end
+	gui.set_position( bar, pos )
 
 	local size = vmath.vector3( width, height, 1 )
-	gui.set_size( hbar, size )
+	gui.set_size( bar, size )
 
 	-- Label
 	tmpl = gui.get_node( "hBarTxtTmpl" )
-	local hbarTxt = gui.clone( tmpl )
-	gui.set_id( hbarTxt, id .. "Txt" )
-	gui.set_enabled( hbarTxt, true )
-	gui.set_parent( hbarTxt, hbar, true )
+	local barTxt = gui.clone( tmpl )
+	gui.set_id( barTxt, id .. "Txt" )
+	gui.set_enabled( barTxt, true )
+	gui.set_parent( barTxt, bar, true )
 
-	pos = gui.get_position( hbarTxt )
-	pos.x = -5
-	pos.y = 0
-	gui.set_position( hbarTxt, pos )
+	if isVertical then 
+		local rot = gui.get_rotation( barTxt )
+		rot.z = 90
+		gui.set_rotation( barTxt, rot ) -- 90 degrees
+	end
 
-	gui.set_text( hbarTxt, id )
+	pos = gui.get_position( barTxt )
+	if isVertical then
+		pos.x = 0
+		pos.y =  -height - 8
+	else
+		pos.x = -8
+		pos.y = 0
+	end
+	gui.set_position( barTxt, pos )
+
+	gui.set_text( barTxt, id )
 	
 	-- Value bar
 	tmpl = gui.get_node( "hBarValTmpl" )
-	local hbarVal = gui.clone( tmpl )
-	gui.set_id( hbarVal, id )
-	gui.set_enabled( hbarVal, true )
-	gui.set_parent( hbarVal, hbar, true )
+	local barVal = gui.clone( tmpl )
+	gui.set_id( barVal, id )
+	gui.set_enabled( barVal, true )
+	gui.set_parent( barVal, bar, true )
 	
-	pos = gui.get_position( hbarVal )
+	pos = gui.get_position( barVal )
 	pos.x = 0
 	pos.y = 0
-	gui.set_position( hbarVal, pos )
+	if isVertical then pos.y = -height end
+	gui.set_position( barVal, pos )
 
-	size = vmath.vector3( value, height, 1 )
-	gui.set_size( hbarVal, size )
+	if isVertical then 
+		size = vmath.vector3( width, value, 1 )
+	else
+		size = vmath.vector3( value, height, 1 )
+	end
+	gui.set_size( barVal, size )
 
-	updateHBar( id, value, color )
+	updateBar( id, value, color, isVertical )
 end
 
 
 
-function updateHBar( id, value, color )
-	local hbarVal = gui.get_node( id )
-	if hbarVal == nil then return nil end
+function updateBar( id, value, color, isVertical )
+	local barVal = gui.get_node( id )
+	if barVal == nil then return nil end
 	
-	local size = gui.get_size( hbarVal )
-	size.x = value
-	gui.set_size( hbarVal, size )
+	local size = gui.get_size( barVal )
+	if isVertical then
+		size.y = -1 * value
+	else
+		size.x = value
+	end
+	gui.set_size( barVal, size )
 
 	if color == nil then color = Color( "#02edff", 1 ) end
-	gui.set_color( hbarVal, color )
+	gui.set_color( barVal, color )
 end
 
 
-function setCaptionHBar( id, caption, x, y, color, scale )
-	local hbarTxt = gui.get_node( id .. "Txt" )
-	if hbarTxt == nil then return nil end
+function setCaptionBar( id, caption, x, y, color, scale, rotate )
+	local barTxt = gui.get_node( id .. "Txt" )
+	if barTxt == nil then return nil end
 
-	if caption ~= nil then gui.set_text( hbarTxt, caption ) end
-	if scale ~= nil then gui.set_scale( hbarTxt, scale ) end
-	if color ~= nil then gui.set_color( hbarTxt, color) end
+	if caption ~= nil then gui.set_text( barTxt, caption ) end
+	if scale ~= nil then gui.set_scale( barTxt, scale ) end
+	if color ~= nil then gui.set_color( barTxt, color) end
+	if rotate ~= nil then gui.set_rotation( barTxt, rotate ) end
 
 	if x ~= nil or y ~= nil then
-		local pos = gui.get_position( hbarTxt )
+		local pos = gui.get_position( barTxt )
 
 		if( x == nil ) then x = pos.x end
 		if( y == nil ) then y = pos.y end
 		
 		pos.x = x
 		pos.y = y
-		gui.set_position( hbarTxt, pos )
+		gui.set_position( barTxt, pos )
 	end
 end
 
@@ -187,14 +209,14 @@ function on_message( self, message_id, message, sender )
 	elseif message_id == hash( "removeRadarBlip" ) then
 		removeRadarBlip( message.id, message.contactId )
 
-	elseif message_id == hash( "createHBar" ) then
-		createHBar( message.id, message.x, message.y, message.width, message.height, message.value, message.color )
+	elseif message_id == hash( "createBar" ) then
+		createBar( message.id, message.x, message.y, message.width, message.height, message.value, message.color, message.isVertical )
 
-	elseif message_id == hash( "updateHBar" ) then
-		updateHBar( message.id, message.value, message.color )
+	elseif message_id == hash( "updateBar" ) then
+		updateBar( message.id, message.value, message.color, message.isVertical )
 
-	elseif message_id == hash( "setCaptionHBar" ) then
-		setCaptionHBar( message.id, message.caption, message.x, message.y, message.color, message.scale )
+	elseif message_id == hash( "setCaptionBar" ) then
+		setCaptionBar( message.id, message.caption, message.x, message.y, message.color, message.scale, message.rotate )
 			
 	end
 end

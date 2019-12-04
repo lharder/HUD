@@ -73,8 +73,11 @@ end
 
 
 --------------------------------------
--- Horizontal bar
+-- Different bar types
+local Bar = {}
 local HBar = {}
+local VBar = {}
+
 
 -- Utility functions -----------------
 local function tween( steps, startCol, endCol )
@@ -94,18 +97,24 @@ local function concatArrays( arr01, arr02 )
 end
 -------------------------------------
 
-function HBar.new( id, x, y, width, height, min, max, value, colHi, colMid, colLo ) 
-	local hb = {}
+function Bar.new( id, x, y, width, height, min, max, value, colHi, colMid, colLo, isVertical ) 
+	local b = {}
 
-	hb.id = id
-	hb.x = x
-	hb.y = y
-	hb.min = min
-	hb.max = max
-	hb.width = width
-	hb.height = height
-	hb.pixPerUnit = width / ( max - min )
-	hb.value = value
+	b.id = id
+	b.x = x
+	b.y = y
+	b.min = min
+	b.max = max
+	b.width = width
+	b.height = height
+	b.value = value
+	b.isVertical = isVertical
+	
+	if isVertical then
+		b.pixPerUnit = height / ( max - min )
+	else
+		b.pixPerUnit = width / ( max - min )
+	end
 	
 	-- three colors, defaults: green, yellow, red
 	if colHi == nil then colHi = "#00ff00" end
@@ -122,76 +131,81 @@ function HBar.new( id, x, y, width, height, min, max, value, colHi, colMid, colL
 	local hi = tween( one3rd, colHi, colHi )
 	local mid = tween( one3rd, colMid, colHi )
 	local lo = tween( one3rd, colLo, colMid )
-	hb.colors = concatArrays( lo, mid )
-	hb.colors = concatArrays( hb.colors, hi )
-	table.insert( hb.colors, colHi )  -- for rounding 
-	-- pprint( hb.colors )
+	b.colors = concatArrays( lo, mid )
+	b.colors = concatArrays( b.colors, hi )
+	table.insert( b.colors, colHi )  -- extra slots to make up
+	table.insert( b.colors, colHi )  -- for rounding 
+	-- pprint( b.colors )
 
-	local uiValue = hb.value
-	if hb.min < 1 then uiValue = uiValue + ( -1 * hb.min ) end
+	local uiValue = b.value
+	if b.min < 1 then uiValue = uiValue + ( -1 * b.min ) end
 	local colIndex = uiValue + 1
-	uiValue = uiValue * hb.pixPerUnit 
+	uiValue = uiValue * b.pixPerUnit 
 		
 	-- inform HUD about new bar instance and create its GUI nodes
-	msg.post( "/collection0/hud#gui", "createHBar", { 
-		id = id, 
-		x = x, 
-		y = y, 
-		width = width, 
-		height = height, 
+	msg.post( "/collection0/hud#gui", "createBar", { 
+		id = b.id, 
+		x = b.x, 
+		y = b.y, 
+		width = b.width, 
+		height = b.height, 
 		value = uiValue,
-		color = hb.colors[ colIndex ] 
+		color = b.colors[ colIndex ],
+		isVertical = b.isVertical
 	})
 
 
-	function hb:getValue()
-		return hb.value
+	function b:getValue()
+		return b.value
 	end
 
 
-	function hb:setCaption( caption, x, y, color, scale )
+	function b:setCaption( caption, x, y, color, scale, rotate )
 		if type( scale ) == "number" then scale = vmath.vector3( scale, scale, scale ) end
+		if type( rotate ) == "number" then rotate = vmath.quat_rotation_z( math.rad( rotate ) ) end
 		
 		-- inform HUD about new caption and set properties of the GUI node
-		msg.post( "/collection0/hud#gui", "setCaptionHBar", { 
-			id = id, 
+		msg.post( "/collection0/hud#gui", "setCaptionBar", { 
+			id = b.id, 
 			caption = caption,
 			x = x, 
 			y = y, 
 			color = Color( color ),
-			scale = scale
+			scale = scale,
+			rotate = rotate
 		})
 	end
 	
 		
-	function hb:update( value ) 
-		if value >= hb.min and value <= hb.max then
+	function b:update( value ) 
+		if value >= b.min and value <= b.max then
 
 			-- check if a change in UI is required at all
-			local oldUiValue = round( hb.value * hb.pixPerUnit )
+			local oldUiValue = round( b.value * b.pixPerUnit )
 
 			-- set new value, calculate new colIndex
-			hb.value = value
+			b.value = value
 			
-			local uiValue = hb.value
-			if hb.min < 1 then uiValue = uiValue + ( -1 * hb.min ) end
+			local uiValue = b.value
+			if b.min < 1 then uiValue = uiValue + ( -1 * b.min ) end
 			local colIndex = uiValue + 1     -- array index must start at 1, not 0
-			uiValue = uiValue * hb.pixPerUnit 
+			uiValue = uiValue * b.pixPerUnit 
 			
 			if uiValue ~= oldUiValue then
 				
 				-- update UI
-				msg.post( "/collection0/hud#gui", "updateHBar", { 
-					id = hb.id,
+				msg.post( "/collection0/hud#gui", "updateBar", { 
+					id = b.id,
 					value = uiValue,
-					color = hb.colors[ colIndex ]
+					color = b.colors[ colIndex ],
+					isVertical = b.isVertical
 				})
 			end
 		end
 	end
 
 	
-	return hb
+	return b
 end
 
 
@@ -207,7 +221,7 @@ function HUD.new( hudfactory, listener )
 	
 	local clock = nil 
 	local radars = {}
-	local hbars = {}
+	local bars = {}
 
 	
 	function hud:newRadar( player, x, y, scale, hexcol, bgTexture ) 
@@ -227,12 +241,21 @@ function HUD.new( hudfactory, listener )
 
 
 	function hud:newHBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo ) 
-		-- create and remember hbar instance
-		-- user provides id/name of new hbar
-		local hbar = HBar.new( name, x, y, width, height, min, max, value, colHi, colMid, colLo )
-		hbars[ name ] = hbar
+		return newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, false )
+	end
+
+	function hud:newVBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo ) 
+		return newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, true )
+	end
+	
+	
+	function newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, isVertical ) 
+		-- create and remember bar instance
+		-- user provides id/name of new bar
+		local bar = Bar.new( name, x, y, width, height, min, max, value, colHi, colMid, colLo, isVertical )
+		bars[ name ] = bar
 		
-		return hbar
+		return bar
 	end
 	
 
