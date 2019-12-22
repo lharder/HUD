@@ -1,0 +1,108 @@
+images {
+  image: "/hud/assets/img/dots/tile00.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile01.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile02.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile03.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile04.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile05.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile06.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile07.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile08.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile09.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile10.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile11.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile12.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile13.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile14.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile15.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile16.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile17.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile18.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile19.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile20.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile21.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile22.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile23.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile24.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile25.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile26.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile27.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile28.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile29.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile30.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile31.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile32.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile33.png"
+}
+images {
+  image: "/hud/assets/img/dots/tile34.png"
+}
+margin: 0
+extrude_borders: 0
+inner_padding: 0

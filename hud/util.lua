@@ -27,8 +27,8 @@ function Texture( url, default )
 		img = parts[ 2 ]
 	end
 
-	if texture ~= nil then 
-		local parts = texture:split( "/" )
+	if url ~= nil then 
+		local parts = url:split( "/" )
 		atlas = parts[ 1 ]
 		img = parts[ 2 ]
 	end

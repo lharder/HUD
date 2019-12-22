@@ -6,12 +6,19 @@ local playerSpecs
 local radars = {}
 local blips = {}
 local bars = {}
+local cominfoIds = {}
+local listeners = {}
 
 
 
 function init( self )
+	msg.post( ".", "acquire_input_focus" )
+	
 	gui.set_enabled( gui.get_node( "radarTmpl" ), false )
-	gui.set_enabled( gui.get_node( "hBarTmpl" ), false )
+	gui.set_enabled( gui.get_node( "barTmpl" ), false )
+	gui.set_enabled( gui.get_node( "cominfoTmpl" ), false )
+	gui.set_enabled( gui.get_node( "buttonTmpl" ), false )
+	gui.set_enabled( gui.get_node( "imgRootTmpl" ), false )
 end
 
 
@@ -29,7 +36,7 @@ local function createRadar( radarId, x, y, hexcol, imgBG )
 	pos.y = y or 0
 	gui.set_position( radar, pos )
 
-	if hexcol == nil then hexcol = "99b3ff" end
+	if hexcol == nil then hexcol = "98f1f2" end
 	gui.set_color( radar, Color( hexcol, .6 ) )
 
 	local atlas, img = Texture( imgBG, "hud/radar" )
@@ -85,13 +92,14 @@ local function removeRadarBlip( radarId, contactId )
 end
 
 
--- Bar handling
+-- Bar handling --------------------------------------------
 function createBar( id, x, y, width, height, value, color, isVertical )
 	if id == nil then return nil end
 
 	-- BG bar
-	local tmpl = gui.get_node( "hBarTmpl" )
+	local tmpl = gui.get_node( "barTmpl" )
 	local bar = gui.clone( tmpl )
+	gui.set_id( bar, id )
 	gui.set_enabled( bar, true )
 
 	local pos = gui.get_position( bar )
@@ -104,9 +112,9 @@ function createBar( id, x, y, width, height, value, color, isVertical )
 	gui.set_size( bar, size )
 
 	-- Label
-	tmpl = gui.get_node( "hBarTxtTmpl" )
+	tmpl = gui.get_node( "barTxtTmpl" )
 	local barTxt = gui.clone( tmpl )
-	gui.set_id( barTxt, id .. "Txt" )
+	gui.set_id( barTxt, id .. "/txt" )
 	gui.set_enabled( barTxt, true )
 	gui.set_parent( barTxt, bar, true )
 
@@ -129,9 +137,9 @@ function createBar( id, x, y, width, height, value, color, isVertical )
 	gui.set_text( barTxt, id )
 	
 	-- Value bar
-	tmpl = gui.get_node( "hBarValTmpl" )
+	tmpl = gui.get_node( "barValTmpl" )
 	local barVal = gui.clone( tmpl )
-	gui.set_id( barVal, id )
+	gui.set_id( barVal, id .. "/val" )
 	gui.set_enabled( barVal, true )
 	gui.set_parent( barVal, bar, true )
 	
@@ -154,7 +162,7 @@ end
 
 
 function updateBar( id, value, color, isVertical )
-	local barVal = gui.get_node( id )
+	local barVal = gui.get_node( id .. "/val" )
 	if barVal == nil then return nil end
 	
 	local size = gui.get_size( barVal )
@@ -171,7 +179,7 @@ end
 
 
 function setCaptionBar( id, caption, x, y, color, scale, rotate )
-	local barTxt = gui.get_node( id .. "Txt" )
+	local barTxt = gui.get_node( id .. "/txt" )
 	if barTxt == nil then return nil end
 
 	if caption ~= nil then gui.set_text( barTxt, caption ) end
@@ -191,6 +199,295 @@ function setCaptionBar( id, caption, x, y, color, scale, rotate )
 	end
 end
 
+
+-- Cominfo --------------------------------------------
+function createCominfo( id, x, y, width, height )
+	if id == nil then return nil end
+
+	local tmpl = gui.get_node( "cominfoTmpl" )
+	local tree = gui.clone_tree( tmpl )					-- remember table of dynamic object ids
+	local cominfo = tree[ hash( "cominfoTmpl" ) ]		-- get root cominfo object by its id
+	gui.set_id( cominfo, id )
+
+	local outer = tree[ hash( "dotsRing" ) ]
+	gui.set_id( outer, id .. "/outer" )
+
+	local inner = tree[ hash( "pieRing" ) ]
+	gui.set_id( inner, id .. "/inner" )
+	
+	local center = tree[ hash( "centerClip" ) ]
+	gui.set_id( center, id .. "/centerClip" )
+
+	local infobox = tree[ hash( "infobox" ) ]
+	gui.set_id( infobox, id .. "/infobox" )
+
+	local subject = tree[ hash( "subject" ) ]
+	gui.set_id( subject, id .. "/subject" )
+
+	local description = tree[ hash( "desc" ) ]
+	gui.set_id( description, id .. "/desc" )
+	
+	local indicator = tree[ hash( "indicator" ) ]
+	gui.set_id( indicator, id .. "/indicator" )
+
+	local pos = gui.get_position( cominfo )
+	pos.x = x or 0
+	pos.y = y or 0
+	gui.set_position( cominfo, pos )
+
+	cominfoIds[ id ] = cominfo
+	gui.set_enabled( cominfo, true )
+end
+
+
+function setOuterValue( id, value )
+	local img = "tile"
+	if value < 10 then img = img .. "0" end
+	img = img .. value
+
+	local outer = gui.get_node( id .. "/outer" )
+	gui.play_flipbook( outer, img )
+end
+
+
+function addClickListener( id, url )
+	listeners[ hash( id ) ] = { url = url, cooldown = 0 }
+end
+
+
+
+function setInnerValue( id, value )
+	local inner = gui.get_node( id .. "/inner" )
+	gui.set_fill_angle( inner, 360 - value )
+end
+
+
+function openInfobox( id )
+	local infobox = gui.get_node( id .. "/infobox" )
+	local pos = gui.get_position( infobox )
+	local dim = gui.get_size( infobox )
+	pos.x = pos.x + dim.x
+	
+	gui.animate( infobox, gui.PROP_POSITION, pos, gui.EASING_INCUBIC, 0.5 )
+end
+
+function closeInfobox( id )
+	local infobox = gui.get_node( id .. "/infobox" )
+	local pos = gui.get_position( infobox )
+	local dim = gui.get_size( infobox )
+	pos.x = pos.x - dim.x
+	
+	gui.animate( infobox, gui.PROP_POSITION, pos, gui.EASING_INCUBIC, 0.5 )
+end
+
+
+function setSubject( id, txt ) 
+	local subject = gui.get_node( id .. "/subject" )
+	gui.set_text( subject, txt )
+end
+
+function setDescription( id, txt ) 
+	local desc = gui.get_node( id .. "/desc" )
+	gui.set_text( desc, txt )
+end
+
+
+function attachToTray( id, nodename )
+	local infobox = gui.get_node( id .. "/infobox" )
+	local child = gui.get_node( nodename )
+	
+	if child ~= nil then 
+		gui.set_parent( child, infobox, false )
+		
+		local scale = gui.get_scale( child )
+		scale.x = 1
+		scale.y = 1
+		scale.z = 1
+		gui.set_scale( child, scale )
+
+	end
+end
+
+
+function attachToCenter( id, nodename )
+	local center = gui.get_node( id .. "/centerClip" )
+	local child = gui.get_node( nodename )
+
+	if child ~= nil then 
+		gui.set_parent( child, center, false )
+		
+		local scale = gui.get_scale( child )
+		scale.x = 1
+		scale.y = 1
+		scale.z = 1
+		gui.set_scale( child, scale )
+
+	end
+end
+
+
+function createButton( id, x, y, txt, listener, width, height  )
+	if id == nil then return nil end
+
+	local tmpl = gui.get_node( "buttonTmpl" )
+	local tree = gui.clone_tree( tmpl )
+	local btn = tree[ hash( "buttonTmpl" ) ]  -- root button object
+	gui.set_id( btn, id )
+
+	local caption = tree[ hash( "caption" ) ]  
+	gui.set_id( caption, id .. "/caption" )
+	gui.set_text( caption, txt )
+	
+	local pos = gui.get_position( btn )
+	pos.x = x or 0
+	pos.y = y or 0
+	gui.set_position( btn, pos )
+
+	local size = gui.get_size( btn )
+	size.x = width or size.x
+	size.y = height or size.y
+	gui.set_size( btn, size )
+	gui.set_size( caption, size )
+
+	if listener ~= nil then
+		addClickListener( id, listener ) 
+	end
+
+	gui.set_enabled( btn, true )
+end
+
+
+function blink( node ) 
+	local col = gui.get_color( node )
+	gui.animate( node, gui.PROP_COLOR, vmath.vector4( col.x, col.y, col.z, 0 ), gui.EASING_LINEAR, 0.1, 0, 
+		function( self, node ) 
+			gui.animate( node, gui.PROP_COLOR, vmath.vector4( col.x, col.y, col.z, 1 ), gui.EASING_LINEAR, 0.1 )
+		end 
+	)
+end
+
+
+
+function createImage( id, x, y, texture, listener, width, height )
+	if id == nil then return nil end
+
+	local tmpl = gui.get_node( "imgRootTmpl" )
+	local tree = gui.clone_tree( tmpl )
+	local imgRoot = tree[ hash( "imgRootTmpl" ) ]  -- root img object
+	gui.set_id( imgRoot, id )
+
+	local clipbox = tree[ hash( "clipbox" ) ] 
+	gui.set_id( clipbox, id .. "/clipbox" )
+
+	local img = tree[ hash( "img" ) ] 
+	gui.set_id( img, id .. "/img" )
+
+	local imgNext = tree[ hash( "imgNext" ) ] 
+	gui.set_id( imgNext, id .. "/imgNext" )
+
+	local pos = gui.get_position( imgRoot )
+	gui.set_position( imgRoot, pos )
+	
+	local size = gui.get_size( imgRoot )
+	size.x = width
+	size.y = height
+	gui.set_size( imgRoot, size )
+	gui.set_size( clipbox, size )
+	gui.set_size( img, size )
+	gui.set_size( imgNext, size )
+
+	local atlas, pic = Texture( texture )
+	gui.set_texture( img, atlas )
+	gui.play_flipbook( img, pic )
+	
+	if listener ~= nil then
+		addClickListener( id, listener ) 
+	end
+
+	gui.set_enabled( imgRoot, true )
+end
+
+
+
+function swipeImage( id, texture, deltaX, deltaY )
+	if ( id == nil ) or ( texture == nil ) then return nil end
+
+	local img = gui.get_node( id .. "/img" )
+	local next = gui.get_node( id .. "/imgNext" )
+	if ( img == nil ) or ( next == nil ) then return nil end
+
+	local size = gui.get_size( img )
+	local pos = gui.get_position( img ) 
+
+	-- setup new image to replace the current one
+	local atlas, pic = Texture( texture )
+	gui.set_texture( next, atlas )
+	gui.play_flipbook( next, pic )
+	
+	-- prepare swipe: position imgages next to 
+	-- each other according to desired movement
+	if deltaX < 0 then 
+		deltaX = -size.x
+		pos.x = pos.x - deltaX
+		gui.set_position( next, pos)
+		
+	elseif deltaX > 0 then 
+		deltaX = size.x
+		pos.x = pos.x - deltaX
+		gui.set_position( next, pos ) 
+	end
+
+	if deltaY < 0 then 
+		deltaY = -size.y
+		pos.y = pos.y - deltaY
+		gui.set_position( next, pos )
+
+	elseif deltaY > 0 then 
+		deltaY = size.y
+		pos.y = pos.y - deltaY
+		gui.set_position( next, pos )
+	end
+
+	-- target position for current image
+	local imgPos = gui.get_position( img ) 
+	imgPos.x = imgPos.x + deltaX
+	imgPos.y = imgPos.y + deltaY
+
+	-- move img out of clipping sight and
+	-- move next to current visible position of img
+	gui.animate( img, gui.PROP_POSITION, imgPos, gui.EASING_LINEAR, .2, 0,
+		function( self, node ) 
+			gui.set_texture( node, atlas )
+			gui.play_flipbook( node, pic )
+			gui.set_position( node, vmath.vector3( 0, 0, 0 ) )
+		end
+	)
+	gui.animate( next, gui.PROP_POSITION, vmath.vector3( 0, 0, 0 ), gui.EASING_LINEAR, .2, 0,
+		function( self, node ) 
+			gui.set_position( node, vmath.vector3( size.x, 0, 0 ) )
+		end
+	 )
+end
+
+
+function setImage( id, texture )
+	if ( id == nil ) or ( texture == nil ) then return nil end
+
+	local img = gui.get_node( id .. "/img" )
+	local col = gui.get_color( img )
+
+	gui.animate( img, gui.PROP_COLOR, vmath.vector4( col.x, col.y, col.z, 0 ), gui.EASING_LINEAR, 0.1, 0, 
+	function( self, node ) 
+		local atlas, pic = Texture( texture )
+		gui.set_texture( node, atlas )
+		gui.play_flipbook( node, pic )
+
+		gui.animate( node, gui.PROP_COLOR, vmath.vector4( col.x, col.y, col.z, 1 ), gui.EASING_LINEAR, 0.1 )
+	end 
+)
+end
+
+	
 
 
 -- Standard events -------------------------------------
@@ -217,7 +514,83 @@ function on_message( self, message_id, message, sender )
 
 	elseif message_id == hash( "setCaptionBar" ) then
 		setCaptionBar( message.id, message.caption, message.x, message.y, message.color, message.scale, message.rotate )
+
+	elseif message_id == hash( "createCominfo" ) then
+		createCominfo( message.id, message.x, message.y )
+
+	elseif message_id == hash( "setOuterValue" ) then
+		setOuterValue( message.id, message.value )
+
+	elseif message_id == hash( "setInnerValue" ) then
+		setInnerValue( message.id, message.value )
+
+	elseif message_id == hash( "openInfobox" ) then
+		openInfobox( message.id )
+
+	elseif message_id == hash( "closeInfobox" ) then
+		closeInfobox( message.id )
+
+	elseif message_id == hash( "setSubject" ) then
+		setSubject( message.id, message.subject )
 			
+	elseif message_id == hash( "setDescription" ) then
+		setDescription( message.id, message.description )
+
+	elseif message_id == hash( "addClickListener" ) then
+		addClickListener( message.nodename, message.listener )
+
+	elseif message_id == hash( "attachToTray" ) then
+		attachToTray( message.id, message.node )
+
+	elseif message_id == hash( "attachToCenter" ) then
+		attachToCenter( message.id, message.node )
+
+	elseif message_id == hash( "createButton" ) then
+		createButton( message.id, message.x, message.y, message.caption, message.listener, message.width, message.height )
+
+	elseif message_id == hash( "createImage" ) then
+		createImage( message.id, message.x, message.y, message.texture, message.listener, message.width, message.height )
+
+	elseif message_id == hash( "swipeImage" ) then
+		swipeImage( message.id, message.texture, message.deltaX, message.deltaY )
+
+	elseif message_id == hash( "setImage" ) then
+		setImage( message.id, message.texture )
+
+	end
+end
+
+
+
+local function handleTouch( self, touch, touch_id )
+	if touch.pressed then
+
+		for id, listener in pairs( listeners ) do
+			-- inform custom listeners about clicks 
+			-- on designated node and let them handle them
+			local node = gui.get_node( hash( id ) )
+			if node ~= nil then 
+				if gui.pick_node( node, touch.x, touch.y ) and socket.gettime() > listener.cooldown then
+					listener.cooldown = socket.gettime() + .5
+					blink( node )
+					msg.post( listener.url, "click", { 
+						node = id
+					})
+				end
+			end
+		end
+		
+	end
+end
+
+
+function on_input( self, action_id, action )
+	if action.touch then
+		for i, tp in pairs( action.touch ) do
+			handleTouch( self, tp, i )
+		end
+	else
+		handleTouch( self, action, 0 )
 	end
 end
 

@@ -73,6 +73,7 @@ end
 
 
 --------------------------------------
+-- BAR 
 -- Different bar types
 local Bar = {}
 local HBar = {}
@@ -117,13 +118,14 @@ function Bar.new( id, x, y, width, height, min, max, value, colHi, colMid, colLo
 	end
 	
 	-- three colors, defaults: green, yellow, red
-	if colHi == nil then colHi = "#00ff00" end
+	if colHi == nil then colHi = "#72ffff" end
 	colHi = Color( colHi, 1 )
 
-	if colMid == nil then colMid = "ffff00" end
+	--if colMid == nil then colMid = "#00787a" end
+	if colMid == nil then colMid = "#ffff00" end
 	colMid = Color( colMid, 1 )
 
-	if colLo == nil then colLo = "ff0000" end
+	if colLo == nil then colLo = "#e06100" end
 	colLo = Color( colLo, 1 )
 	
 	-- color gradients precalculated per possible values
@@ -211,6 +213,233 @@ end
 
 
 --------------------------------------
+-- COMINFO DEVICE 
+local Cominfo = {}
+
+function Cominfo.new( id, x, y )
+	local com = {}
+
+	com.id = id
+	com.x = x
+	com.y = y
+	com.width = 240
+	com.height = 240
+
+	-- defaults 	
+	com.outerRing = { min = 0,   max = 100,  value = 0 }
+	com.innerRing = { min = 0,   max = 100,  value = 0 }
+	com.imageIndex = 0
+	com.tray = { isOpen = true,  subject = "",  description = "" }
+
+	
+	function com:setOuterValue( value, min, max )
+		if value == nil then return end
+		if min ~= nil then com.outerRing.min = min end
+		if max ~= nil then com.outerRing.max = max end
+
+		local scaledValue = math.floor( value * ( 35 / com.outerRing.max ) ) 	  -- 35 dot states available
+		if scaledValue >= 0 and scaledValue <= 34 then
+			com.outerRing.value = value
+
+			msg.post( "/collection0/hud#gui", "setOuterValue", { 
+				id = com.id,
+				value = scaledValue
+			})
+		end
+	end
+
+	
+	function com:getOuterValue()
+		return com.outerRing.value 
+	end
+
+	
+	function com:setInnerValue( value, min, max )
+		if value == nil then return end
+		if min ~= nil then com.innerRing.min = min end
+		if max ~= nil then com.innerRing.max = max end
+
+		local scaledValue = math.floor( value * ( 360 / com.innerRing.max ) )	-- 360 degrees/states available
+		if scaledValue >= 0 and scaledValue <= 360 then
+			com.innerRing.value = value
+
+			msg.post( "/collection0/hud#gui", "setInnerValue", { 
+				id = com.id,
+				value = scaledValue
+			})
+		end
+	end
+
+	
+	function com:getInnerValue()
+		return com.innerRing.value 
+	end
+
+
+	function com:addClickListener( url, nodename )
+		if nodename == nil then nodename = "/indicator" end
+		
+		msg.post( "/collection0/hud#gui", "addClickListener", { 
+			nodename = com.id .. nodename,
+			listener = url
+		})
+		com.clicklistener = url
+	end
+
+
+	function com:attach( nodename )
+		com.imageIndex = com.imageIndex + 1
+		msg.post( "/collection0/hud#gui", "attachToCenter", { 
+			id = com.id,
+			node = nodename
+		})
+	end
+	
+
+	-- Infobox Tray --------------------------------------
+	function com.tray:open()
+		msg.post( "/collection0/hud#gui", "openInfobox", { 
+			id = com.id
+		})
+		com.tray.isOpen = true
+	end
+
+	function com.tray:close()
+		msg.post( "/collection0/hud#gui", "closeInfobox", { 
+			id = com.id
+		})
+		com.tray.isOpen = false
+	end
+	
+
+	function com.tray:setSubject( txt )
+		msg.post( "/collection0/hud#gui", "setSubject", { 
+			id = com.id,
+			subject = txt
+		})
+	end
+
+	function com.tray:setDescription( txt )
+		msg.post( "/collection0/hud#gui", "setDescription", { 
+			id = com.id,
+			description = txt
+		})
+	end
+
+	function com.tray:attach( node )
+		msg.post( "/collection0/hud#gui", "attachToTray", { 
+			id = com.id,
+			node = node
+		})
+	end
+
+	
+	-- Create and return new HUD --------------------------------------
+	msg.post( "/collection0/hud#gui", "createCominfo", { 
+		id = com.id,
+		x = com.x,
+		y = com.y
+	})
+	
+	return com
+end
+
+
+--------------------------------------
+-- Button 
+local Button = {}
+
+function Button.new( name, x, y, caption, listener, width, height ) 
+	local btn = {}
+
+	btn.id = name
+	btn.x = x
+	btn.y = y
+	btn.width = width
+	btn.height = height
+	btn.caption = caption
+	btn.listener = listener
+
+	msg.post( "/collection0/hud#gui", "createButton", { 
+		id = btn.id,
+		x = btn.x,
+		y = btn.y,
+		width = btn.width,
+		height = btn.height,
+		caption = btn.caption,
+		listener = btn.listener
+	})
+
+	return btn
+end
+
+
+
+--------------------------------------
+-- Image
+local Image = {}
+
+function Image.new( name, x, y, texture, width, height, listener ) 
+	local img = {}
+
+	img.id = name
+	img.x = x
+	img.y = y
+	img.texture = texture
+	img.width = width
+	img.height = height
+	img.listener = listener
+
+	img.cooldown = 0
+
+	msg.post( "/collection0/hud#gui", "createImage", { 
+		id = img.id,
+		x = img.x,
+		y = img.y,
+		texture = img.texture,
+		width = img.width,
+		height = img.height,
+		listener = img.listener
+	})
+
+
+	function img:set( texture )
+		if socket.gettime() > img.cooldown then
+			img.cooldown = socket.gettime() + .5
+
+			img.texture = texture
+			msg.post( "/collection0/hud#gui", "setImage", { 
+				id = img.id,
+				texture = img.texture,
+			})
+		end
+	end
+
+
+	function img:swipe( texture, deltaX, deltaY )
+		if deltaX == nil then deltaX = -1 end
+		if deltaY == nil then deltaY =  0 end
+		
+		if socket.gettime() > img.cooldown then
+			img.cooldown = socket.gettime() + .5
+			
+			img.texture = texture
+			msg.post( "/collection0/hud#gui", "swipeImage", { 
+				id = img.id,
+				texture = img.texture,
+				deltaX = deltaX,
+				deltaY = deltaY
+			})
+		end
+	end
+	
+	
+	return img
+end
+
+
+
+--------------------------------------
 -- HUD 
 function HUD.new( hudfactory, listener )
 	local CLOCKTICK = 0.33
@@ -222,8 +451,11 @@ function HUD.new( hudfactory, listener )
 	local clock = nil 
 	local radars = {}
 	local bars = {}
+	local cominfos = {}
+	local buttons = {}
 
-	
+
+	-- Radar
 	function hud:newRadar( player, x, y, scale, hexcol, bgTexture ) 
 		-- create and remember radar instance
 		-- next index as id for this radar
@@ -240,6 +472,7 @@ function HUD.new( hudfactory, listener )
 	end
 
 
+	-- Bars
 	function hud:newHBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo ) 
 		return newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, false )
 	end
@@ -247,8 +480,8 @@ function HUD.new( hudfactory, listener )
 	function hud:newVBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo ) 
 		return newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, true )
 	end
-	
-	
+
+
 	function newBar( name, x, y, width, height, min, max, value, colHi, colMid, colLo, isVertical ) 
 		-- create and remember bar instance
 		-- user provides id/name of new bar
@@ -257,6 +490,35 @@ function HUD.new( hudfactory, listener )
 		
 		return bar
 	end
+
+	
+	-- Cominfo
+	function hud:newCominfo( name, x, y ) 
+		-- user provides id/name of new bar
+		local cominfo = Cominfo.new( name, x, y )
+		cominfos[ cominfo ] = cominfo
+
+		return cominfo
+	end
+
+
+	function hud:cominfo( id )
+		return cominfos[ id ]
+	end
+
+
+	-- buttons
+	function hud:newButton( name, x, y, width, height, caption, listener ) 
+		local btn = Button.new( name, x, y, width, height, caption, listener )
+		return btn
+	end
+
+
+	-- images
+	function hud:newImage( name, x, y, texture, width, height, listener ) 
+		return Image.new( name, x, y, texture, width, height, listener )
+	end
+	
 	
 
 	-- update HUD every CLOCKTICK secs:
