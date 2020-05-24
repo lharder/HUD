@@ -1,39 +1,48 @@
 images {
   image: "/hud/assets/img/radar.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/points_powerup_lifes_03.png"
-}
-images {
-  image: "/assets/guns.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/bomb.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/electron.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/heart.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/missile.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/nuclear.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/shield.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/icons/star.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/points_powerup_lifes_01.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
 images {
   image: "/hud/assets/img/button.png"
+  sprite_trim_mode: SPRITE_TRIM_MODE_OFF
 }
+
 margin: 0
 extrude_borders: 0
 inner_padding: 0
